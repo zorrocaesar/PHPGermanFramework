@@ -1,0 +1,15 @@
+{
+    "require": {
+        "symfony/console": "2.5.*@dev",
+        "symfony/yaml": "2.5.*@dev",
+        "symfony/dom-crawler": "2.5.*@dev",
+        "doctrine/orm": "2.4.*",
+        "phpunit/phpunit": "3.7.28"
+    },
+    "autoload": {
+        "psr-0": {
+            "Gearman\\": "src/Gearman",
+            "": "src"
+        }
+    }
+}

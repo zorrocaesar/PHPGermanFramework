@@ -1,0 +1,16 @@
+GearmanItem:
+  type: entity
+  table: gearmanItems
+  id:
+    id:
+      type: integer
+      generator:
+        strategy: NONE
+      unique: true
+  fields:
+    in_progress:
+      type: integer
+    finished:
+      type: integer
+    error:
+      type: integer

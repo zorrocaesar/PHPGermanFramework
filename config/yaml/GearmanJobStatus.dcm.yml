@@ -1,0 +1,14 @@
+GearmanJobStatus:
+  type: entity
+  table: GearmanJobStatus
+  id:
+    id:
+      lenght: 100
+      generator:
+        strategy: NONE
+      unique: true
+  fields:
+    status:
+      type: integer
+    percent:
+      type: integer
