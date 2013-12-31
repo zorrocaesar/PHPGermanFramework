@@ -117,26 +117,17 @@ class ImportManager extends ImportManagerAbstract {
             while($count > 0) {
                 $idsToSend = $this->getAvailableGearmanWorkItemsIds();
                 if(!empty($idsToSend)) {
-                    $config = new \stdClass();
-                    $config->ids = $idsToSend;
-
+                    /**
+                     * Gearman client is initialized and ready to send jobs to server
+                     */
                     if($gmClient) {
-                        $this->output->writeln('Sending task <comment>' . $page . '</comment>');
-                        $gmClient->addTaskBackground('reverse',  json_encode($config));
-                        $this->entityManager->getConnection()->executeUpdate('
-                            UPDATE gearmanItems
-                            SET in_progress = 1
-                            WHERE in_progress = 0
-                            LIMIT ' . $this->pageSize . '
-                        ');
+                        $this->sendGermanJob($page, $idsToSend, $gmClient);
                     } else {
-                        $this->entityManager->getConnection()->executeUpdate('
-                            UPDATE gearmanItems
-                            SET error = 1
-                            WHERE in_progress = 0
-                            AND error = 0
-                            LIMIT ' . $this->pageSize . '
-                        ');
+                        /**
+                         * If the Gearman client is not present, mark all IDs about to be sent as
+                         * having an error
+                         */
+                        $this->markAsError();
                     }
                 }
 
@@ -209,5 +200,38 @@ class ImportManager extends ImportManagerAbstract {
             $idsToSend[] = $result['id'];
         }
         return $idsToSend;
+    }
+
+    /**
+     * @param $page
+     * @param $idsToSend
+     * @param $gmClient
+     */
+    private function sendGermanJob($page, $idsToSend, $gmClient)
+    {
+        $this->output->writeln('Sending task <comment>' . $page . '</comment>');
+        $config = new \stdClass();
+        $config->ids = $idsToSend;
+        $gmClient->addTaskBackground('reverse', json_encode($config));
+        $this->entityManager->getConnection()->executeUpdate('
+                            UPDATE gearmanItems
+                            SET in_progress = 1
+                            WHERE in_progress = 0
+                            LIMIT ' . $this->pageSize . '
+                        ');
+    }
+
+    /**
+     * Mark work items as errors
+     */
+    protected function markAsError()
+    {
+        $this->entityManager->getConnection()->executeUpdate('
+                            UPDATE gearmanItems
+                            SET error = 1
+                            WHERE in_progress = 0
+                            AND error = 0
+                            LIMIT ' . $this->pageSize . '
+                        ');
     }
 } 
