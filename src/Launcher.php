@@ -1,6 +1,7 @@
 <?php
 
-use Gearman\Framework\ImportManager;
+use Gearman\Manager\ImportManager;
+use Gearman\Worker\GearmanWorker;
 use Gearman\Framework\StatusChecker;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -51,11 +52,8 @@ class Launcher extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         if ($input->getOption('worker')) {
-            $worker = new \GearmanWorker();
-            $worker->addServer();
-            $worker->addFunction("reverse", array('\Gearman\Worker\GearmanWorker', 'reverse'), $output);
-            $output->writeln('<info>Worker started. Waiting for work...</info>');
-            while ($worker->work());
+            $worker = new GearmanWorker($output, DatabaseAccess::getInstance());
+            $worker->work();
         }
 
         if ($input->getOption('generateTestData')) {
@@ -67,9 +65,9 @@ class Launcher extends Command
         }
 
         if ($input->getOption('startManager')) {
-            $importManager = new ImportManager($output);
-            $importManager->generateWork();
-            //$importManager->processWork();
+            $importManager = new ImportManager($output, \DatabaseAccess::getInstance());
+            //$importManager->generateWork();
+            $importManager->processWork();
         }
 
         if ($input->getOption('checkStatus')) {

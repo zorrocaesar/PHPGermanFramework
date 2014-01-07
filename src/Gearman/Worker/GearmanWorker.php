@@ -8,16 +8,39 @@
 
 namespace Gearman\Worker;
 
+use Gearman\Framework\GearmanWorkerInterface;
+use \GearmanWorker as GMWorker;
+use Symfony\Component\Console\Output\OutputInterface;
 
-class GearmanWorker {
 
-    public function reverse(\GearmanJob $job, $output) {
-        $output->writeln('Starting work...');
+class GearmanWorker implements GearmanWorkerInterface {
+
+    /**
+     * @var OutputInterface
+     */
+    protected $_output;
+    /** @var \Doctrine\ORM\EntityManager */
+    protected $_entityManager;
+
+    public function __construct(OutputInterface $output, \Doctrine\ORM\EntityManager $entityManager) {
+        $this->_output = $output;
+        $this->_entityManager = $entityManager;
+    }
+
+    public function work() {
+        $worker = new GMWorker();
+        $worker->addServer();
+        $worker->addFunction("reverse", array($this, 'reverse'));
+        $this->_output->writeln('<info>Worker started. Waiting for work...</info>');
+        while ($worker->work());
+    }
+
+    public function reverse(\GearmanJob $job) {
+        $this->_output->writeln('Starting work...');
         $workload = json_decode($job->workload());
 
-        $entityManager = \DatabaseAccess::getInstance();
-        $repositoryItem = $entityManager->getRepository('Item');
-        $repositoryGearmanItem = $entityManager->getRepository('GearmanItem');
+        $repositoryItem = $this->_entityManager->getRepository('Item');
+        $repositoryGearmanItem = $this->_entityManager->getRepository('GearmanItem');
 
         $totalItems = count($workload->ids);
         $currentItem = 1;
@@ -29,26 +52,26 @@ class GearmanWorker {
              * If the id item is finished, than it must have previously processed so we skip it
              */
             if ($gearmanItem->getFinished() == 1) {
-                $output->writeln('Processing ID <comment>' . $id . '</comment>: <question>skipping</question>');
+                $this->_output->writeln('Processing ID <comment>' . $id . '</comment>: <question>skipping</question>');
                 continue;
             }
 
             $item = $repositoryItem->find($id);
-            $output->writeln('Processing ID <comment>' . $id . '</comment>: ' . $item->getName() . ' ==reversing==> <info>' . strrev($item->getName()) . '</info>');
+            $this->_output->writeln('Processing ID <comment>' . $id . '</comment>: ' . $item->getName() . ' ==reversing==> <info>' . strrev($item->getName()) . '</info>');
 
             $item->setName(strrev($item->getName()));
-            $entityManager->persist($item);
+            $this->_entityManager->persist($item);
 
             $gearmanItem->setFinished(1);
-            $entityManager->persist($gearmanItem);
+            $this->_entityManager->persist($gearmanItem);
 
-            $entityManager->flush();
+            $this->_entityManager->flush();
 
             $job->sendStatus($currentItem, $totalItems);
             $currentItem++;
         }
 
-        $output->writeln('Work done!');
+        $this->_output->writeln('Work done!');
         return;
     }
 } 
